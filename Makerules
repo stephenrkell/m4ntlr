@@ -1,0 +1,82 @@
+# include this Makefile in your antlr-m4-derived parser's Makefile!
+
+GRAMMAR_BASENAME ?= example
+GRAMMAR_TOPLEVEL ?= toplevel
+GRAMMAR_OPTIONS ?= output=AST
+
+THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
+INCS := $(wildcard *.inc)
+
+ANTLR ?= java -classpath .:$(CLASSPATH) org.antlr.Tool
+
+# So that we can find test_parser.c.m4
+VPATH := $(dir $(THIS_MAKEFILE)):$(VPATH)
+
+#$(GRAMMAR_BASENAME).tokens: Makefile
+## create a simple ASCII (32--127) token vocabulary for single-character tokens
+#	for num in `seq 32 127`; do printf "'\%o'=$$num\n" "$$num"; done > "$@"
+
+.PHONY: test
+test:: $(GRAMMAR_BASENAME)PyParser.py
+	while read line; do \
+		case "$$line" in \
+			(\#*) continue ;; \
+			(*) eval python $(GRAMMAR_BASENAME)PyParser.py $$line  || break ;; \
+		esac; \
+	done < $(GRAMMAR_BASENAME).g.tests
+
+test_parser: $(GRAMMAR_BASENAME)CLexer.o $(GRAMMAR_BASENAME)CParser.o test_parser.o
+	$(CC) -o "$@" $+ -lantlr3c
+
+M4FLAGS += -Dantlr_m4_grammar_name=$(GRAMMAR_BASENAME)
+M4FLAGS += -Dantlr_m4_grammar_prefix=$(GRAMMAR_BASENAME)'$$1'
+M4FLAGS += -Dantlr_m4_grammar_toplevel=$(GRAMMAR_TOPLEVEL)
+M4FLAGS += -Dantlr_m4_user_options="\`$(patsubst %,%;,$(GRAMMAR_OPTIONS))'"
+
+CFLAGS += -I./include
+
+test_parser.c: test_parser.c.m4
+	m4 $(M4FLAGS) "$<" > "$@"
+
+%Py.g: %.g.m4 $(INCS)
+	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-py.inc "$<" > "$@" && chmod ugo-w "$@"
+
+%PyLexer.py %PyParser.py: %Py.g 
+	$(ANTLR) "$<"
+
+%C.g: %.g.m4 $(INCS)
+	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-c.inc "$<" > "$@" && chmod ugo-w "$@"
+	
+%CLexer.c %CParser.c: %C.g 
+	$(ANTLR) "$<"
+	mkdir -p include && mv $*CLexer.h $*CParser.h include/
+
+%Cpp.g: %.g.m4 $(INCS)
+	m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-cpp.inc "$<" > "$@"
+	
+%CppLexer.c %CppParser.c: %Cpp.g 
+	$(ANTLR) "$<"
+
+%Java.g: %.g.m4 $(INCS)
+	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-java.inc -Dantlr_m4_java_package=$$(echo "$<" | sed 's/\.g\.m4$$//') "$<" > "$@" && chmod ugo-w "$@"
+
+# HACK: we have to use this GRAMMAR_BASENAME thing because make has
+# no way of expressing <pattern>/<the-same-pattern>blah.foo
+$(GRAMMAR_BASENAME)/%JavaLexer.java $(GRAMMAR_BASENAME)/%JavaParser.java: %Java.g
+	$(ANTLR) "$<" -o "$(GRAMMAR_BASENAME)"
+
+%.o: %.c
+	$(CC) $(CFLAGS) -o "$@" -c "$<"
+
+#.PHONY: headers
+#%.h: %.class
+#	gcjh -force -d . -classpath .:$(CLASSPATH) $**.class
+
+clean::
+	rm -f *.class *.h *.o *.a *.pyc *.d *{Py,Java,Cpp,C}.g 
+	rm -f *Parser.c *Lexer.c
+	rm -f *Parser.py *Lexer.py
+	rm -f $(GRAMMAR_BASENAME)/*{Parser,Lexer}.java $(GRAMMAR_BASENAME)/*.tokens
+	rm -f test_parser.c test_parser
+	rm -rf include
