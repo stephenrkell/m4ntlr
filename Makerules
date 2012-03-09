@@ -36,36 +36,45 @@ M4FLAGS += -Dantlr_m4_grammar_prefix=$(GRAMMAR_BASENAME)'$$1'
 M4FLAGS += -Dantlr_m4_grammar_toplevel=$(GRAMMAR_TOPLEVEL)
 M4FLAGS += -Dantlr_m4_user_options="\`$(patsubst %,%;,$(GRAMMAR_OPTIONS))'"
 
-CFLAGS += -I./include
+CFLAGS += -I$(GRAMMAR_PATH)/include
 
 TEST_PARSER_DEPS := $(GRAMMAR_PATH)/.test_parser.d
-$(TEST_PARSER_DEPS) : .%.d : %.c
+$(TEST_PARSER_DEPS) : $(GRAMMAR_PATH)/.%.d : $(GRAMMAR_PATH)/%.c
 	$(CC) -MM $(CFLAGS) "$<"  > "$@"
 -include $(TEST_PARSER_DEPS)
 
-$(GRAMMAR_PATH)/test_parser.c: $(GRAMMAR_PATH)/test_parser.c.m4
+$(GRAMMAR_PATH)/test_parser.c: test_parser.c.m4
 	m4 $(M4FLAGS) "$<" > "$@"
 
-%Py.g: %.g.m4 $(INCS)
+$(GRAMMAR_PATH)/%Py.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-py.inc "$<" > "$@" && chmod ugo-w "$@"
 
-%PyLexer.py %PyParser.py: %Py.g 
+$(GRAMMAR_PATH)/%PyLexer.py $(GRAMMAR_PATH)/%PyParser.py: $(GRAMMAR_PATH)/%Py.g 
 	$(ANTLR) "$<"
 
-%C.g: %.g.m4 $(INCS)
+$(GRAMMAR_PATH)/%C.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-c.inc "$<" > "$@" && chmod ugo-w "$@"
-	
-%CLexer.c %CParser.c: %C.g 
-	$(ANTLR) "$<"
-	mkdir -p $(GRAMMAR_PATH)/include && mv $*CLexer.h $*CParser.h $(GRAMMAR_PATH)/include/
 
-%Cpp.g: %.g.m4 $(INCS)
+#$(warning Grammar path is $(GRAMMAR_PATH))
+#$(warning Grammar path is really $(realpath $(GRAMMAR_PATH)))	
+
+$(GRAMMAR_PATH)/%CLexer.c \
+$(GRAMMAR_PATH)/%CParser.c \
+$(GRAMMAR_PATH)/include/%CLexer.h \
+$(GRAMMAR_PATH)/include/%CParser.h: $(GRAMMAR_PATH)/%C.g 
+	$(ANTLR) "$<"
+	mkdir -p $(GRAMMAR_PATH)/include && \
+	mv \
+		$(GRAMMAR_PATH)/$*CLexer.h $(GRAMMAR_PATH)/$*CParser.h \
+		$(GRAMMAR_PATH)/include/
+
+$(GRAMMAR_PATH)/%Cpp.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 	m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-cpp.inc "$<" > "$@"
 	
-%CppLexer.c %CppParser.c: %Cpp.g 
+$(GRAMMAR_PATH)/%CppLexer.c $(GRAMMAR_PATH)/%CppParser.c: $(GRAMMAR_PATH)/%Cpp.g 
 	$(ANTLR) "$<"
 
-%Java.g: %.g.m4 $(INCS)
+$(GRAMMAR_PATH)/%Java.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-java.inc -Dantlr_m4_java_package=$$(echo "$<" | sed 's/\.g\.m4$$//') "$<" > "$@" && chmod ugo-w "$@"
 
 # HACK: we have to use this GRAMMAR_BASENAME thing because make has
