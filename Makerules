@@ -3,10 +3,11 @@
 GRAMMAR_BASENAME ?= example
 GRAMMAR_TOPLEVEL ?= toplevel
 GRAMMAR_OPTIONS ?= output=AST
+GRAMMAR_PATH ?= .
 
 THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
-INCS := $(wildcard *.inc)
+INCS := $(wildcard $(GRAMMAR_PATH)/*.inc)
 
 ANTLR ?= java -classpath .:$(CLASSPATH) org.antlr.Tool
 
@@ -18,15 +19,16 @@ VPATH := $(dir $(THIS_MAKEFILE)):$(VPATH)
 #	for num in `seq 32 127`; do printf "'\%o'=$$num\n" "$$num"; done > "$@"
 
 .PHONY: test
-test:: $(GRAMMAR_BASENAME)PyParser.py
+test:: $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)PyParser.py
 	while read line; do \
 		case "$$line" in \
 			(\#*) continue ;; \
-			(*) eval python $(GRAMMAR_BASENAME)PyParser.py $$line  || break ;; \
+			(*) eval python $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)PyParser.py $$line  || break ;; \
 		esac; \
-	done < $(GRAMMAR_BASENAME).g.tests
+	done < $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME).g.tests
 
-test_parser: $(GRAMMAR_BASENAME)CLexer.o $(GRAMMAR_BASENAME)CParser.o test_parser.o
+$(GRAMMAR_PATH)/test_parser: \
+$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CLexer.o $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CParser.o $(GRAMMAR_PATH)/test_parser.o
 	$(CC) -o "$@" $+ -lantlr3c
 
 M4FLAGS += -Dantlr_m4_grammar_name=$(GRAMMAR_BASENAME)
@@ -36,7 +38,12 @@ M4FLAGS += -Dantlr_m4_user_options="\`$(patsubst %,%;,$(GRAMMAR_OPTIONS))'"
 
 CFLAGS += -I./include
 
-test_parser.c: test_parser.c.m4
+TEST_PARSER_DEPS := $(GRAMMAR_PATH)/.test_parser.d
+$(TEST_PARSER_DEPS) : .%.d : %.c
+	$(CC) -MM $(CFLAGS) "$<"  > "$@"
+-include $(TEST_PARSER_DEPS)
+
+$(GRAMMAR_PATH)/test_parser.c: $(GRAMMAR_PATH)/test_parser.c.m4
 	m4 $(M4FLAGS) "$<" > "$@"
 
 %Py.g: %.g.m4 $(INCS)
@@ -50,7 +57,7 @@ test_parser.c: test_parser.c.m4
 	
 %CLexer.c %CParser.c: %C.g 
 	$(ANTLR) "$<"
-	mkdir -p include && mv $*CLexer.h $*CParser.h include/
+	mkdir -p $(GRAMMAR_PATH)/include && mv $*CLexer.h $*CParser.h $(GRAMMAR_PATH)/include/
 
 %Cpp.g: %.g.m4 $(INCS)
 	m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-cpp.inc "$<" > "$@"
@@ -63,8 +70,8 @@ test_parser.c: test_parser.c.m4
 
 # HACK: we have to use this GRAMMAR_BASENAME thing because make has
 # no way of expressing <pattern>/<the-same-pattern>blah.foo
-$(GRAMMAR_BASENAME)/%JavaLexer.java $(GRAMMAR_BASENAME)/%JavaParser.java: %Java.g
-	$(ANTLR) "$<" -o "$(GRAMMAR_BASENAME)"
+$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)/%JavaLexer.java $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)/%JavaParser.java: %Java.g
+	$(ANTLR) "$<" -o "$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)"
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o "$@" -c "$<"
@@ -74,9 +81,9 @@ $(GRAMMAR_BASENAME)/%JavaLexer.java $(GRAMMAR_BASENAME)/%JavaParser.java: %Java.
 #	gcjh -force -d . -classpath .:$(CLASSPATH) $**.class
 
 clean::
-	rm -f *.class *.h *.o *.a *.pyc *.d *{Py,Java,Cpp,C}.g 
-	rm -f *Parser.c *Lexer.c
-	rm -f *Parser.py *Lexer.py
-	rm -f $(GRAMMAR_BASENAME)/*{Parser,Lexer}.java $(GRAMMAR_BASENAME)/*.tokens
-	rm -f test_parser.c test_parser
-	rm -rf include
+	cd $(GRAMMAR_PATH)/ && (rm -f *.class *.h *.o *.a *.pyc *.d *Py.g *Java.g *Cpp.g *C.g; \
+	rm -f *Parser.c *Lexer.c; \
+	rm -f *Parser.py *Lexer.py; \
+	rm -f $(GRAMMAR_BASENAME)/*{Parser,Lexer}.java $(GRAMMAR_BASENAME)/*.tokens; \
+	rm -f test_parser.c test_parser; \
+	rm -rf include )
