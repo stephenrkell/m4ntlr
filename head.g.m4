@@ -5,6 +5,7 @@ options {
     antlr_m4_extra_options
     antlr_m4_user_options
 }
+antlr_m4_before_rules
 
 // headers are output on `antlr_m4_begin_rules'
 

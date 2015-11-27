@@ -31,6 +31,7 @@ $(GRAMMAR_PATH)/test_parser: \
 $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CLexer.o $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CParser.o $(GRAMMAR_PATH)/test_parser.o
 	$(CC) -o "$@" $+ -lantlr3c
 
+M4FLAGS += -I$(dir $(THIS_MAKEFILE))
 M4FLAGS += -Dantlr_m4_grammar_name=$(GRAMMAR_BASENAME)
 M4FLAGS += -Dantlr_m4_grammar_prefix=$(GRAMMAR_BASENAME)'$$1'
 M4FLAGS += -Dantlr_m4_grammar_toplevel=$(GRAMMAR_TOPLEVEL)
