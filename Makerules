@@ -27,8 +27,8 @@ test:: $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)PyParser.py
 		esac; \
 	done < $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME).g.tests
 
-$(GRAMMAR_PATH)/test_parser: \
-$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CLexer.o $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CParser.o $(GRAMMAR_PATH)/test_parser.o
+$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)_test_parser: \
+$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CLexer.o $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CParser.o $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)_test_parser.o
 	$(CC) -o "$@" $+ -lantlr3c
 
 M4FLAGS += -I$(dir $(THIS_MAKEFILE))
@@ -39,20 +39,22 @@ M4FLAGS += -Dantlr_m4_user_options="\`$(patsubst %,%;,$(GRAMMAR_OPTIONS))'"
 
 CFLAGS += -I$(GRAMMAR_PATH)/include
 
-TEST_PARSER_DEPS := $(GRAMMAR_PATH)/.test_parser.d
+TEST_PARSER_DEPS := $(GRAMMAR_PATH)/.$(GRAMMAR_BASENAME)_test_parser.d
 $(TEST_PARSER_DEPS) : $(GRAMMAR_PATH)/.%.d : $(GRAMMAR_PATH)/%.c
 	$(CC) -MM $(CFLAGS) "$<"  > "$@"
 -include $(TEST_PARSER_DEPS)
 
-$(GRAMMAR_PATH)/test_parser.c: test_parser.c.m4
+$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)_test_parser.c: test_parser.c.m4
 	m4 $(M4FLAGS) "$<" > "$@"
 
+.SECONDARY: $(GRAMMAR_PATH)/%Py.g
 $(GRAMMAR_PATH)/%Py.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-py.inc "$<" > "$@" && chmod ugo-w "$@"
 
 $(GRAMMAR_PATH)/%PyLexer.py $(GRAMMAR_PATH)/%PyParser.py: $(GRAMMAR_PATH)/%Py.g 
 	$(ANTLR) "$<"
 
+.SECONDARY: $(GRAMMAR_PATH)/%C.g
 $(GRAMMAR_PATH)/%C.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 	( test ! -e "$@" || chmod +w "$@" ) && m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-c.inc "$<" > "$@" && chmod ugo-w "$@"
 
@@ -83,17 +85,14 @@ $(GRAMMAR_PATH)/%Java.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)/%JavaLexer.java $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)/%JavaParser.java: %Java.g
 	$(ANTLR) "$<" -o "$(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)"
 
-%.o: %.c
-	$(CC) $(CFLAGS) -o "$@" -c "$<"
-
 #.PHONY: headers
 #%.h: %.class
 #	gcjh -force -d . -classpath .:$(CLASSPATH) $**.class
 
 clean::
-	cd $(GRAMMAR_PATH)/ && (rm -f *.class *.h *.o *.a *.pyc *.d *Py.g *Java.g *Cpp.g *C.g; \
+	cd $(GRAMMAR_PATH)/ && (rm -f *.class *.h *.o *.a *.pyc *.d; \
 	rm -f *Parser.c *Lexer.c; \
 	rm -f *Parser.py *Lexer.py; \
 	rm -f $(GRAMMAR_BASENAME)/*{Parser,Lexer}.java $(GRAMMAR_BASENAME)/*.tokens; \
-	rm -f test_parser.c test_parser; \
+	rm -f $(GRAMMAR_BASENAME)_test_parser.c $(GRAMMAR_BASENAME)_test_parser; \
 	rm -rf include )

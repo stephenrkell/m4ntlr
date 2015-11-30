@@ -5,12 +5,11 @@ options {
     antlr_m4_extra_options
     antlr_m4_user_options
 }
-antlr_m4_before_rules
 
 // headers are output on `antlr_m4_begin_rules'
-
 // tokens {} goes here!
 // then rules!
 // remember: 
 // use `antlr_m4_begin_rules' before your rules
+// use `antlr_m4_before_lexer_rules' before your lexer rules
 // use `antlr_m4_newline_action' and `antlr_m4_skip_action' in lexer
