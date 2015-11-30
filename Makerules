@@ -40,7 +40,7 @@ M4FLAGS += -Dantlr_m4_user_options="\`$(patsubst %,%;,$(GRAMMAR_OPTIONS))'"
 CFLAGS += -I$(GRAMMAR_PATH)/include
 
 TEST_PARSER_DEPS := $(GRAMMAR_PATH)/.$(GRAMMAR_BASENAME)_test_parser.d
-$(TEST_PARSER_DEPS) : $(GRAMMAR_PATH)/.%.d : $(GRAMMAR_PATH)/%.c
+$(TEST_PARSER_DEPS) : $(GRAMMAR_PATH)/.%.d : $(GRAMMAR_PATH)/%.c $(GRAMMAR_PATH)/%.h
 	$(CC) -MM $(CFLAGS) "$<"  > "$@"
 -include $(TEST_PARSER_DEPS)
 
@@ -63,13 +63,9 @@ $(GRAMMAR_PATH)/%C.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 
 $(GRAMMAR_PATH)/%CLexer.c \
 $(GRAMMAR_PATH)/%CParser.c \
-$(GRAMMAR_PATH)/include/%CLexer.h \
-$(GRAMMAR_PATH)/include/%CParser.h: $(GRAMMAR_PATH)/%C.g 
+$(GRAMMAR_PATH)/%CLexer.h \
+$(GRAMMAR_PATH)/%CParser.h: $(GRAMMAR_PATH)/%C.g 
 	$(ANTLR) "$<"
-	mkdir -p $(GRAMMAR_PATH)/include && \
-	mv \
-		$(GRAMMAR_PATH)/$*CLexer.h $(GRAMMAR_PATH)/$*CParser.h \
-		$(GRAMMAR_PATH)/include/
 
 $(GRAMMAR_PATH)/%Cpp.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
 	m4 $(M4FLAGS) -Dantlr_m4_include_file=antlr-m4-cpp.inc "$<" > "$@"
@@ -91,8 +87,9 @@ $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)/%JavaLexer.java $(GRAMMAR_PATH)/$(GRAMMAR_BA
 
 clean::
 	cd $(GRAMMAR_PATH)/ && (rm -f *.class *.h *.o *.a *.pyc *.d; \
-	rm -f *Parser.c *Lexer.c; \
-	rm -f *Parser.py *Lexer.py; \
-	rm -f $(GRAMMAR_BASENAME)/*{Parser,Lexer}.java $(GRAMMAR_BASENAME)/*.tokens; \
-	rm -f $(GRAMMAR_BASENAME)_test_parser.c $(GRAMMAR_BASENAME)_test_parser; \
-	rm -rf include )
+	rm -f $(GRAMMAR_BASENAME)CParser.c $(GRAMMAR_BASENAME)CLexer.c; \
+	rm -f $(GRAMMAR_BASENAME)CParser.h $(GRAMMAR_BASENAME)CLexer.h; \
+	rm -f $(GRAMMAR_BASENAME)PyParser.py $(GRAMMAR_BASENAME)PyLexer.py; \
+	rm -f $(GRAMMAR_BASENAME)/$(GRAMMAR_BASENAME)Java{Parser,Lexer}.java; \
+	rm -f $(GRAMMAR_BASENAME)/*.tokens; \
+	rm -f $(GRAMMAR_BASENAME)_test_parser.c $(GRAMMAR_BASENAME)_test_parser )
