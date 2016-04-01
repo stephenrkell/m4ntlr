@@ -29,7 +29,7 @@ test:: $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)PyParser.py
 
 $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)_test_parser: \
 $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CLexer.o $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)CParser.o $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)_test_parser.o
-	$(CC) -o "$@" $+ -lantlr3c
+	$(CC) -o "$@" $+ $(LDFLAGS) -lantlr3c $(LDLIBS)
 
 M4FLAGS += -I$(dir $(THIS_MAKEFILE))
 M4FLAGS += -Dantlr_m4_grammar_name=$(GRAMMAR_BASENAME)
