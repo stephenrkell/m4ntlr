@@ -23,7 +23,7 @@ test:: $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)PyParser.py
 	while read line; do \
 		case "$$line" in \
 			(\#*) continue ;; \
-			(*) eval python $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)PyParser.py $$line  || break ;; \
+			(*) python $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)PyParser.py --rule="$(GRAMMAR_TOPLEVEL)" --input "$$line"  || break ;; \
 		esac; \
 	done < $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME).g.tests
 
@@ -39,13 +39,21 @@ M4FLAGS += -Dantlr_m4_user_options="\`$(patsubst %,%;,$(GRAMMAR_OPTIONS))'"
 
 CFLAGS += -I$(GRAMMAR_PATH)/include
 
-TEST_PARSER_DEPS := $(GRAMMAR_PATH)/.$(GRAMMAR_BASENAME)_test_parser.d
-$(TEST_PARSER_DEPS) : $(GRAMMAR_PATH)/.%.d : $(GRAMMAR_PATH)/%.c $(GRAMMAR_PATH)/%.h
-	$(CC) -MM $(CFLAGS) "$<"  > "$@"
--include $(TEST_PARSER_DEPS)
-
 $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)_test_parser.c: test_parser.c.m4
 	m4 $(M4FLAGS) "$<" > "$@"
+	
+TEST_PARSER_DEPS := $(GRAMMAR_PATH)/.$(GRAMMAR_BASENAME)_test_parser.d
+$(TEST_PARSER_DEPS) : $(GRAMMAR_PATH)/.%_test_parser.d : $(GRAMMAR_PATH)/%_test_parser.c \
+$(GRAMMAR_PATH)/%CLexer.c \
+$(GRAMMAR_PATH)/%CParser.c \
+$(GRAMMAR_PATH)/%CLexer.h \
+$(GRAMMAR_PATH)/%CParser.h
+	$(CC) -MM $(CFLAGS) "$<"  > "$@" || (rm -f "$@"; false)
+
+$(warning MAKECMDGOALS is $(MAKECMDGOALS))
+ifneq ($(MAKECMDGOALS),clean)
+-include $(TEST_PARSER_DEPS)
+endif
 
 .SECONDARY: $(GRAMMAR_PATH)/%Py.g
 $(GRAMMAR_PATH)/%Py.g: $(GRAMMAR_PATH)/%.g.m4 $(INCS)
@@ -86,7 +94,7 @@ $(GRAMMAR_PATH)/$(GRAMMAR_BASENAME)/%JavaLexer.java $(GRAMMAR_PATH)/$(GRAMMAR_BA
 #	gcjh -force -d . -classpath .:$(CLASSPATH) $**.class
 
 clean::
-	cd $(GRAMMAR_PATH)/ && (rm -f *.class *.h *.o *.a *.pyc *.d; \
+	cd $(GRAMMAR_PATH)/ && (rm -f *.class *.h *.o *.a *.pyc *.d .*.d; \
 	rm -f $(GRAMMAR_BASENAME)CParser.c $(GRAMMAR_BASENAME)CLexer.c; \
 	rm -f $(GRAMMAR_BASENAME)CParser.h $(GRAMMAR_BASENAME)CLexer.h; \
 	rm -f $(GRAMMAR_BASENAME)PyParser.py $(GRAMMAR_BASENAME)PyLexer.py; \
