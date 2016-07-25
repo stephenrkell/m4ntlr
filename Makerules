@@ -48,7 +48,7 @@ $(GRAMMAR_PATH)/%CLexer.c \
 $(GRAMMAR_PATH)/%CParser.c \
 $(GRAMMAR_PATH)/%CLexer.h \
 $(GRAMMAR_PATH)/%CParser.h
-	$(CC) -MM $(CFLAGS) "$<"  > "$@" || (rm -f "$@"; false)
+	$(CC) -MM $(CFLAGS) $(CPPFLAGS) "$<"  > "$@" || (rm -f "$@"; false)
 
 $(warning MAKECMDGOALS is $(MAKECMDGOALS))
 ifneq ($(MAKECMDGOALS),clean)
