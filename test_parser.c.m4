@@ -1,5 +1,6 @@
 `#'include <stdio.h>
 `#'include <assert.h>
+`#'include <err.h>
 
 `#'include "antlr3.h"
 `#'include "antlr3defs.h"
@@ -31,6 +32,6 @@ int main(int argc, char **argv)
 	pANTLR3_STRING s = tree->toStringTree(tree);
 	
 	printf("%s\n", (char*) s->chars);
-	
-	return 0;
+	/* FIXME: saner way to detect the error node */
+	return 0 == strcmp((char*) s->chars, "Tree Error Node");
 }	
